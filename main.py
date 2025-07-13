@@ -13,7 +13,11 @@ import google.generativeai as genai
 # --- Configuration ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY environment variable not found. Please set it.")
+    raise ValueError("GOOGLE_API_KEY environment variable not found. Please set it in your deployment environment.")
+
+# Validate API key format (basic check)
+if not GOOGLE_API_KEY.startswith("AIza"):
+    raise ValueError("Invalid Google API key format. Please check your API key.")
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -127,4 +131,5 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
