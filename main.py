@@ -4,7 +4,7 @@ import base64
 import binascii
 import io
 
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
@@ -25,7 +25,7 @@ genai.configure(api_key=GOOGLE_API_KEY)
 app = FastAPI(
     title="Aadhar Card Extractor API",
     description="An API to extract information from an Aadhar card image using Gemini.",
-    version="1.0.0"
+    version="1.1.0" # Version updated
 )
 
 # --- CORS Middleware ---
@@ -102,26 +102,45 @@ def extract_aadhar_info_from_image(img: Image.Image):
 def read_root():
     return {"status": "ok", "message": "Welcome to the Aadhar Extractor API!"}
 
-@app.post("/extract-aadhar/", response_model=AadharData, summary="Extract Aadhar Information")
-async def extract_from_aadhar(request: AadharRequest):
+# ✨ NEW ENDPOINT FOR FILE UPLOADS ✨
+@app.post("/extract-from-file/", response_model=AadharData, summary="Extract Aadhar Info From File")
+async def extract_from_file(file: UploadFile = File(...)):
     """
-    Accepts a base64 encoded image, decodes it, and extracts Aadhar card details.
+    Accepts a direct image file upload (jpg, png), and extracts Aadhar card details.
+    This is the recommended endpoint for use with clients like Postman.
     """
     try:
-        # Decode the base64 string
-        image_data = base64.b64decode(request.image_base64)
+        # Read the file content
+        image_data = await file.read()
         image_stream = io.BytesIO(image_data)
         img = Image.open(image_stream)
 
-    except (base64.binascii.Error, binascii.Error, IOError) as e:
-        raise HTTPException(status_code=400, detail=f"Invalid or corrupted image data: {e}")
-
+    except IOError:
+        raise HTTPException(status_code=400, detail="Invalid or corrupted image file.")
+    
     # Process the image and get the data
     aadhar_data = extract_aadhar_info_from_image(img)
     
     # Validate the extracted data
     validated_data = AadharData(**aadhar_data)
     
+    return validated_data
+
+# (This is your old endpoint. You can keep it or remove it.)
+@app.post("/extract-aadhar/", response_model=AadharData, summary="Extract Aadhar Information (Base64)")
+async def extract_from_aadhar(request: AadharRequest):
+    """
+    Accepts a base64 encoded image string, decodes it, and extracts Aadhar card details.
+    """
+    try:
+        image_data = base64.b64decode(request.image_base64)
+        image_stream = io.BytesIO(image_data)
+        img = Image.open(image_stream)
+    except (binascii.Error, IOError):
+        raise HTTPException(status_code=400, detail="Invalid or corrupted base64 image data.")
+    
+    aadhar_data = extract_aadhar_info_from_image(img)
+    validated_data = AadharData(**aadhar_data)
     return validated_data
 
 # Health check for deployment
