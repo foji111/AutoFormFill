@@ -11,12 +11,10 @@ from PIL import Image
 import google.generativeai as genai
 
 # --- Configuration ---
-# Ensure you have your GOOGLE_API_KEY set as an environment variable
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY environment variable not found. Please set it.")
 
-# Validate API key format (basic check)
 if not GOOGLE_API_KEY.startswith("AIza"):
     raise ValueError("Invalid Google API key format. Please check your API key.")
 
@@ -26,13 +24,13 @@ genai.configure(api_key=GOOGLE_API_KEY)
 app = FastAPI(
     title="PAN Card Extractor API",
     description="An API to extract information from a PAN card image using Gemini.",
-    version="1.0.0"
+    version="1.0.1" # Version updated
 )
 
 # --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict this in production for security
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,14 +68,19 @@ def extract_pancard_info_from_image(img: Image.Image):
 
         response = model.generate_content([prompt, img])
 
-        # Clean up the response to ensure it's a valid JSON string
-        json_output = response.text.strip().replace("```json", "").replace("```", "")
-        
+        # --- THIS IS THE CORRECTED PART ---
+        # Use the more robust cleanup logic from your Aadhar script
+        json_output = response.text.strip()
+        if json_output.startswith("```json"):
+            json_output = json_output[len("```json"):].strip()
+        if json_output.endswith("```"):
+            json_output = json_output[:-len("```")].strip()
+        # --- END OF CORRECTION ---
+            
         parsed_data = json.loads(json_output)
         return parsed_data
 
     except json.JSONDecodeError:
-        # This error happens if the model's output isn't valid JSON
         raise HTTPException(
             status_code=500, 
             detail={
@@ -86,7 +89,6 @@ def extract_pancard_info_from_image(img: Image.Image):
             }
         )
     except Exception as e:
-        # Handle other potential errors (e.g., API call failure)
         raise HTTPException(status_code=500, detail={"error": f"An unexpected error occurred: {str(e)}"})
 
 # --- API Endpoints ---
@@ -98,7 +100,6 @@ def read_root():
 async def extract_pancard_from_file(file: UploadFile = File(...)):
     """
     Accepts a direct image file upload (jpg, png) and extracts PAN card details.
-    This is the recommended endpoint.
     """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
@@ -111,10 +112,7 @@ async def extract_pancard_from_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file.")
     
     pancard_data = extract_pancard_info_from_image(img)
-    
-    # Validate that the extracted data conforms to the Pydantic model
     validated_data = PANCardData(**pancard_data)
-    
     return validated_data
 
 @app.post("/extract-pancard-from-base64/", response_model=PANCardData, summary="Extract PAN Card Info (Base64)")
