@@ -17,7 +17,6 @@ class PANCardData(BaseModel):
     name: str = Field(..., description="Full name of the cardholder.")
     pan_number: str = Field(..., description="PAN number (10 characters, alphanumeric).")
     date_of_birth: str = Field(..., description="Date of Birth in DD/MM/YYYY format.")
-    father_name: str = Field(..., description="Father's name as per PAN card.")
 
 def extract_pancard_info_from_image(img: Image.Image):
     model = genai.GenerativeModel('gemini-1.5-flash')
@@ -30,7 +29,6 @@ def extract_pancard_info_from_image(img: Image.Image):
       "name": "...",
       "pan_number": "...",
       "date_of_birth": "..."
-      "father_name": "..."
     }"""
 
     response = model.generate_content([
