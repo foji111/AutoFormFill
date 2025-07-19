@@ -24,7 +24,7 @@ genai.configure(api_key=GOOGLE_API_KEY)
 app = FastAPI(
     title="PAN Card Extractor API",
     description="An API to extract information from a PAN card image using Gemini.",
-    version="1.0.1" # Version updated
+    version="1.0.1"
 )
 
 # --- CORS Middleware ---
@@ -42,59 +42,74 @@ class PANCardRequest(BaseModel):
 
 class PANCardData(BaseModel):
     name: str = Field(..., description="Full name of the cardholder.")
-    pan_number: str = Field(..., description="Permanent Account Number (10 characters, alphanumeric).")
+    pan_number: str = Field(..., description="PAN number (10 characters, alphanumeric).")
     date_of_birth: str = Field(..., description="Cardholder's date of birth in DD/MM/YYYY format.")
-    fathers_name: str = Field(..., description="Cardholder's father's name.")
 
 # --- Gemini Extraction Logic ---
 def extract_pancard_info_from_image(img: Image.Image):
     """
-    Analyzes an image using the Gemini model to extract PAN card details.
+    Analyze a PAN card image using Gemini to extract name, PAN number, and date of birth.
     """
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
+
+        # Convert image to PNG bytes
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        image_bytes = buffer.getvalue()
 
         prompt = """
         Analyze this PAN card image and extract the following information in a clean JSON format:
         {
             "name": "Full Name of the cardholder",
             "pan_number": "PAN Number (10 characters, alphanumeric)",
-            "date_of_birth": "Date of Birth in DD/MM/YYYY format",
-            "fathers_name": "Father's Name"
+            "date_of_birth": "Date of Birth in DD/MM/YYYY format"
         }
         If a field is not clearly visible or found, use an empty string "" for its value.
         Ensure the output is ONLY the raw JSON object, without any markdown formatting like ```json ... ```.
         """
 
-        response = model.generate_content([prompt, img])
+        response = model.generate_content([
+            prompt,
+            {
+                "mime_type": "image/png",
+                "data": image_bytes
+            }
+        ])
 
-        # --- THIS IS THE CORRECTED PART ---
-        # Use the more robust cleanup logic from your Aadhar script
         json_output = response.text.strip()
+
+        # Clean up common markdown formatting if present
         if json_output.startswith("```json"):
             json_output = json_output[len("```json"):].strip()
         if json_output.endswith("```"):
             json_output = json_output[:-len("```")].strip()
-        # --- END OF CORRECTION ---
-            
+
         parsed_data = json.loads(json_output)
         return parsed_data
 
     except json.JSONDecodeError:
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail={
-                "error": "Failed to parse JSON output from the model.",
+                "error": "Failed to parse JSON output from Gemini.",
                 "raw_output": response.text
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": f"An unexpected error occurred: {str(e)}"})
+        raise HTTPException(
+            status_code=500,
+            detail={"error": f"An unexpected error occurred: {str(e)}"}
+        )
 
 # --- API Endpoints ---
 @app.get("/", summary="Health Check")
 def read_root():
     return {"status": "ok", "message": "Welcome to the PAN Card Extractor API!"}
+
+@app.get("/health", summary="Deployment Health Check")
+def health_check():
+    return {"status": "healthy"}
 
 @app.post("/extract-pancard-from-file/", response_model=PANCardData, summary="Extract PAN Card Info From File")
 async def extract_pancard_from_file(file: UploadFile = File(...)):
@@ -103,14 +118,14 @@ async def extract_pancard_from_file(file: UploadFile = File(...)):
     """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
-    
+
     try:
         image_data = await file.read()
         image_stream = io.BytesIO(image_data)
         img = Image.open(image_stream)
     except IOError:
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file.")
-    
+
     pancard_data = extract_pancard_info_from_image(img)
     validated_data = PANCardData(**pancard_data)
     return validated_data
@@ -126,16 +141,12 @@ async def extract_pancard_from_base64(request: PANCardRequest):
         img = Image.open(image_stream)
     except (binascii.Error, IOError):
         raise HTTPException(status_code=400, detail="Invalid or corrupted base64 image data.")
-    
+
     pancard_data = extract_pancard_info_from_image(img)
     validated_data = PANCardData(**pancard_data)
     return validated_data
 
-# Health check for deployment environments
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
-
+# --- Local Execution Entry Point ---
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
