@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(pan_router, prefix="/pan", tags=["PAN Card"])
 app.include_router(aadhar_router, prefix="/aadhaar", tags=["Aadhaar Card"])
+app.include_router(pan_router, prefix="/marksheet", tags=["Marksheet"])
 
 @app.get("/")
 def read_root():
