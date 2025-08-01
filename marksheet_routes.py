@@ -45,7 +45,7 @@ class ImageRequest(BaseModel):
 # --- Gemini Extraction Logic (remains the same) ---
 def extract_marksheet_info_from_image(img: Image.Image) -> dict:
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         prompt = """
 Your primary task is to act as a highly accurate data extraction tool. Analyze the provided university marksheet image and convert the information into a structured JSON object.
 
