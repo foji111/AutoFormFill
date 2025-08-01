@@ -49,17 +49,49 @@ def extract_marksheet_info_from_image(img: Image.Image) -> dict:
         prompt = """Your task is to perform a highly accurate, field-by-field extraction from the provided university marksheet.
 
 **CRITICAL INSTRUCTIONS:**
-1.  **Ignore the MOOC Table**: There is a table for "# MOOC Course" at the bottom of the page. You must completely ignore this section. Do not extract any data from it.
-2.  **Find Every Subject**: You must extract **every single subject** listed in the main results table. Do not miss any rows. Capture the code, name, grade, and credits for each.
-3.  **Semester vs. Exam Period**: For the 'semester' field in the JSON, you must use the value from the label "Semester" (e.g., 'II'). Do **not** use the "Exam Period".
-4.  **SPI Extraction (Mandatory)**: This is the most important step.
-    * **First, try to read the numerical value directly from the "SPI" label.**
-    * **If you cannot read it, YOU MUST CALCULATE IT as a fallback:**
-        `spi = Grade Points Earned (G) / Credits Earned`
-    * Find "Grade Points Earned (G)" and "Credits Earned" in the "Semester Performance Index" section.
-5.  **Final Output**: The output must be ONLY the raw JSON object, without any markdown ` ```json ` or other text.
 
-**Target JSON Structure:**
+1.  **Ignore the MOOC Table**: There is a table for "# MOOC Course" at the bottom of the page. You must completely ignore this section. Do not extract any data from it.
+
+2.  **Find Every Subject**: You must extract **every single subject** listed in the main results table. Do not miss any rows. Capture the code, name, grade, and credits for each subject, even if the data is partially unclear.
+
+3.  **Semester vs. Exam Period**:
+    - For the `"semester"` field in the final JSON, you must use the value labeled as `"Semester"` (e.g., `"II"`, `"III"`, etc.).
+    - **Do not use** the "Exam Period" value.
+
+4.  **SPI Extraction (Mandatory)**: This is the most important step.
+    
+    * First, search for a section labeled similar to:  
+      `"SPI"`, `"Semester Performance Index"`, `"S.P.I"`, `"S.P.I."`, etc.
+    
+    * Look for a **numerical value** immediately after this label, such as:  
+      - `SPI: 7.42`  
+      - `Semester Performance Index (SPI) = 7.42`  
+      - `S.P.I.: 8.00`  
+      - etc.
+    
+    * If the SPI value cannot be found directly, then calculate it using this formula:  
+      **SPI = Grade Points Earned (G) / Credits Earned**
+
+    * To calculate SPI, locate the values in the `"Semester Performance Index"` section:
+      - **Grade Points Earned (G)** — e.g., `G: 180.5`
+      - **Credits Earned** — e.g., `Credits: 24.0`
+    
+    * Perform the division (G / Credits) and round the result to **2 decimal places**.
+    
+    * If both direct SPI and calculation data are completely missing, only then set `"spi": null`.
+
+5.  **Common field labels to look for (may vary)**:
+    - "Grade Points Earned (G)"
+    - "Credits Earned"
+    - "Semester Performance Index"
+    - "S.P.I." or "SPI"
+
+6.  **Final Output (Important)**:
+    - Your output must be **only** the raw JSON object.
+    - Do **not** include any markdown (e.g., ` ```json `), headings, or explanation.
+    - The JSON format must follow this exact structure:
+
+```json
 {
     "student_name": "...",
     "enrollment_number": "...",
@@ -77,7 +109,8 @@ def extract_marksheet_info_from_image(img: Image.Image) -> dict:
     "spi": 0.0,
     "result_status": "...",
     "date_of_issue": "..."
-}"""
+}
+"""
         response = model.generate_content([prompt, img])
         json_output = response.text.strip()
         if json_output.startswith("```json"):
