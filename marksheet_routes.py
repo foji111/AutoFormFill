@@ -46,7 +46,38 @@ class ImageRequest(BaseModel):
 def extract_marksheet_info_from_image(img: Image.Image) -> dict:
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = """extract all important field in json format"""
+        prompt = """Your task is to perform a highly accurate, field-by-field extraction from the provided university marksheet.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Ignore the MOOC Table**: There is a table for "# MOOC Course" at the bottom of the page. You must completely ignore this section. Do not extract any data from it.
+2.  **Find Every Subject**: You must extract **every single subject** listed in the main results table. Do not miss any rows. Capture the code, name, grade, and credits for each.
+3.  **Semester vs. Exam Period**: For the 'semester' field in the JSON, you must use the value from the label "Semester" (e.g., 'II'). Do **not** use the "Exam Period".
+4.  **SPI Extraction (Mandatory)**: This is the most important step.
+    * **First, try to read the numerical value directly from the "SPI" label.**
+    * **If you cannot read it, YOU MUST CALCULATE IT as a fallback:**
+        `spi = Grade Points Earned (G) / Credits Earned`
+    * Find "Grade Points Earned (G)" and "Credits Earned" in the "Semester Performance Index" section.
+5.  **Final Output**: The output must be ONLY the raw JSON object, without any markdown ` ```json ` or other text.
+
+**Target JSON Structure:**
+{
+    "student_name": "...",
+    "enrollment_number": "...",
+    "university_name": "...",
+    "program_name": "...",
+    "semester": "II",
+    "results": [
+        {
+            "subject_code": "...",
+            "subject_name": "...",
+            "grade": "...",
+            "credits": 0.0
+        }
+    ],
+    "spi": 0.0,
+    "result_status": "...",
+    "date_of_issue": "..."
+}"""
         response = model.generate_content([prompt, img])
         json_output = response.text.strip()
         if json_output.startswith("```json"):
