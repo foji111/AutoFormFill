@@ -80,6 +80,17 @@ def extract_marksheet_info_from_image(img: Image.Image) -> dict:
     
     * If both direct SPI and calculation data are completely missing, only then set `"spi": null`.
 
+    🚨 DO NOT SKIP THIS: You MUST return `"spi"` as either a number or null.
+
+* If you find a line like `SPI: 7.52` or `Semester Performance Index: 7.52`, extract the number.
+* If you cannot find SPI directly, look for:
+    - `Grade Points Earned (G): <number>`
+    - `Credits Earned: <number>`
+  Then compute `spi = G / Credits`, rounded to 2 decimal places.
+
+You are REQUIRED to attempt both methods before setting `"spi": null`.
+
+
 5.  **Common field labels to look for (may vary)**:
     - "Grade Points Earned (G)"
     - "Credits Earned"
