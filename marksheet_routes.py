@@ -46,36 +46,7 @@ class ImageRequest(BaseModel):
 def extract_marksheet_info_from_image(img: Image.Image) -> dict:
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = """
-Your primary task is to act as a highly accurate data extraction tool. Analyze the provided university marksheet image and convert the information into a structured JSON object.
-
-**Key Instructions:**
-1.  **Extract All Fields**: Carefully extract the student's name, enrollment number, university, program, and semester.
-2.  **Subject List**: Create a JSON array for the 'results', capturing each subject's code, name, grade, and credits.
-3.  **Find the SPI**: Pay special attention to the "Semester Performance Index" section. Locate the value explicitly labeled 'SPI' and place its numerical value into the 'overall_score' field.
-4.  **Final Details**: Capture the overall 'result_status' (e.g., 'Pass') and the 'date_of_issue'.
-5.  **Strict Formatting**: The output must be ONLY the raw JSON object. Do not include any extra text, explanations, or markdown formatting like ```json.
-
-**Target JSON Structure:**
-{
-    "student_name": "...",
-    "enrollment_number": "...",
-    "university_name": "...",
-    "program_name": "...",
-    "semester": "...",
-    "results": [
-        {
-            "subject_code": "...",
-            "subject_name": "...",
-            "grade": "...",
-            "credits": 0.0
-        }
-    ],
-    "overall_score": 0.0,
-    "result_status": "...",
-    "date_of_issue": "..."
-}
-"""
+        prompt = """extract all important field in json format"""
         response = model.generate_content([prompt, img])
         json_output = response.text.strip()
         if json_output.startswith("```json"):
