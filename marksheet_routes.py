@@ -143,8 +143,14 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
 # IMPORTANT: Change decorators from @app.post to @router.post
 # and simplify the paths to be combined with the prefix in main.py
 
-@router.post("/extract-from-file", response_model=MarksheetData)
+@router.post("/extract-from-file", response_model=MarksheetData, summary="Extract Marksheet from file", description="Upload a Marksheet image to extract Student Details, Subjects, and Grades.")
 async def extract_marksheet_from_file(file: UploadFile = File(...)):
+    """
+    Accepts a direct image file upload (jpg, png) and extracts marksheet details.
+
+    Returns:
+        MarksheetData: JSON object containing student info, subject results, and overall score.
+    """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
     try:
@@ -156,8 +162,14 @@ async def extract_marksheet_from_file(file: UploadFile = File(...)):
     return MarksheetData(**marksheet_data)
 
 
-@router.post("/extract-from-base64", response_model=MarksheetData)
+@router.post("/extract-from-base64", response_model=MarksheetData, summary="Extract Marksheet from Base64", description="Send a base64 encoded Marksheet image to extract Student Details, Subjects, and Grades.")
 async def extract_marksheet_from_base64(request: ImageRequest):
+    """
+    Accepts a base64 encoded image string and extracts marksheet details.
+
+    Returns:
+        MarksheetData: JSON object containing student info, subject results, and overall score.
+    """
     try:
         img = Image.open(io.BytesIO(base64.b64decode(request.image_base64)))
     except (binascii.Error, IOError):

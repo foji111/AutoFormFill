@@ -39,8 +39,14 @@ def extract_pancard_info_from_image(img: Image.Image):
     text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
     return json.loads(text)
 
-@router.post("/extract-from-file", response_model=PANCardData)
+@router.post("/extract-from-file", response_model=PANCardData, summary="Extract PAN from file", description="Upload a PAN card image to extract Name, PAN Number, and Date of Birth.")
 async def extract_pan_from_file(file: UploadFile = File(...)):
+    """
+    Accepts a direct image file upload (jpg, png, etc.) and extracts PAN card details.
+
+    Returns:
+        PANCardData: JSON object containing name, pan_number, and date_of_birth.
+    """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file.")
     try:
@@ -49,8 +55,14 @@ async def extract_pan_from_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Invalid image")
     return PANCardData(**extract_pancard_info_from_image(img))
 
-@router.post("/extract-from-base64", response_model=PANCardData)
+@router.post("/extract-from-base64", response_model=PANCardData, summary="Extract PAN from Base64", description="Send a base64 encoded PAN card image to extract Name, PAN Number, and Date of Birth.")
 async def extract_pan_from_base64(request: PANCardRequest):
+    """
+    Accepts a base64 encoded image string and extracts PAN card details.
+
+    Returns:
+        PANCardData: JSON object containing name, pan_number, and date_of_birth.
+    """
     try:
         img = Image.open(io.BytesIO(base64.b64decode(request.image_base64)))
     except Exception:
