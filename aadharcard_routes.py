@@ -21,6 +21,8 @@ if not GOOGLE_API_KEY.startswith("AIza"):
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
 # --- Pydantic Models ---
 class AadharRequest(BaseModel):
     image_base64: str
@@ -77,11 +79,11 @@ def extract_aadhar_info_from_image(img: Image.Image):
         return parsed_data
 
     except json.JSONDecodeError as e:
+        # Sentinel: Removed raw_output leak to prevent exposing sensitive data
         raise HTTPException(
             status_code=500,
             detail={
-                "error": "Failed to parse JSON output from Gemini.",
-                "raw_output": response.text
+                "error": "Failed to parse JSON output from Gemini. The model response was not valid JSON."
             }
         )
     except Exception as e:
@@ -97,7 +99,16 @@ async def extract_from_file(file: UploadFile = File(...)):
     """
     Accepts a direct image file upload (jpg, png), and extracts Aadhar card details.
     """
+    # Sentinel: Enforce file size limit to prevent DoS
     try:
+        # Check file size without reading into memory first
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
         image_data = await file.read()
         image_stream = io.BytesIO(image_data)
         img = Image.open(image_stream)
