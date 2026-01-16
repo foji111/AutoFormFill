@@ -78,7 +78,7 @@ def extract_aadhar_info_from_image(img: Image.Image):
         parsed_data = json.loads(json_output)
         return parsed_data
 
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         # Sentinel: Removed raw_output leak to prevent exposing sensitive data
         raise HTTPException(
             status_code=500,
@@ -86,10 +86,10 @@ def extract_aadhar_info_from_image(img: Image.Image):
                 "error": "Failed to parse JSON output from Gemini. The model response was not valid JSON."
             }
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=500,
-            detail={"error": f"An unexpected error occurred: {str(e)}"}
+            detail={"error": "An unexpected error occurred."}
         )
 
 # --- API Endpoints ---
