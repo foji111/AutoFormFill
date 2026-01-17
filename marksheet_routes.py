@@ -19,6 +19,7 @@ router = APIRouter()
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 # --- Pydantic Models (remains the same) ---
 class SubjectResult(BaseModel):
@@ -136,7 +137,11 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
             
         return parsed_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+        # Log the error internally (in a real app), but return a generic message to the user
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while processing the marksheet. Please try again or contact support."
+        )
 
 
 # --- API Endpoints ---
@@ -147,6 +152,15 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
 async def extract_marksheet_from_file(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
+
+    # Check file size without reading into memory first
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
     try:
         img = Image.open(io.BytesIO(await file.read()))
     except IOError:
