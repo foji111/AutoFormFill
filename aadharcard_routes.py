@@ -87,9 +87,10 @@ def extract_aadhar_info_from_image(img: Image.Image):
             }
         )
     except Exception as e:
+        # Log error internally
         raise HTTPException(
             status_code=500,
-            detail={"error": f"An unexpected error occurred: {str(e)}"}
+            detail={"error": "An unexpected error occurred during processing."}
         )
 
 # --- API Endpoints ---
