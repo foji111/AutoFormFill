@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Body, File, UploadFile
 from pydantic import BaseModel, Field
 from PIL import Image
 import google.generativeai as genai
+from utils import validate_file_size
 
 # --- Router Setup ---
 # Use APIRouter instead of FastAPI
@@ -147,6 +148,10 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
 async def extract_marksheet_from_file(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
+
+    # Sentinel: Enforce file size limit to prevent DoS
+    await validate_file_size(file)
+
     try:
         img = Image.open(io.BytesIO(await file.read()))
     except IOError:

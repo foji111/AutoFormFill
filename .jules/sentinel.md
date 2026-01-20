@@ -4,3 +4,8 @@
 **Prevention:**
 1. Always enforce `MAX_FILE_SIZE` on uploads.
 2. Sanitize error messages in `HTTPException` to hide internal details.
+
+## 2025-01-20 - [Memory Exhaustion via File Uploads]
+**Vulnerability:** File upload endpoints (`/pan/extract-from-file`, `/marksheet/extract-from-file`) read the entire file into memory with `await file.read()` without checking the size first.
+**Learning:** Even if the infrastructure has limits, the application should defend itself. FastAPI's `UploadFile` can be spooled, but `await read()` loads it all.
+**Prevention:** Use `file.file.seek(0, 2)` to check `file.file.tell()` (size) before reading content.
