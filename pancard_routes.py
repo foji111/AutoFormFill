@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from PIL import Image
 import base64, binascii, io, os, json
 import google.generativeai as genai
+from utils import validate_file_size
 
 router = APIRouter()
 
@@ -43,6 +44,10 @@ def extract_pancard_info_from_image(img: Image.Image):
 async def extract_pan_from_file(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file.")
+
+    # Sentinel: Enforce file size limit to prevent DoS
+    await validate_file_size(file)
+
     try:
         img = Image.open(io.BytesIO(await file.read()))
     except Exception:
