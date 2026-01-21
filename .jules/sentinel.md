@@ -4,3 +4,10 @@
 **Prevention:**
 1. Always enforce `MAX_FILE_SIZE` on uploads.
 2. Sanitize error messages in `HTTPException` to hide internal details.
+
+## 2025-10-27 - [Consistent Security Application]
+**Vulnerability:** Inconsistent application of security fixes (DoS protection) across similar endpoints (`pancard` and `marksheet` routes were missed when `aadhaar` was fixed).
+**Learning:** Security fixes must be applied holistically. When a vulnerability pattern is found, grep the entire codebase for similar patterns.
+**Prevention:**
+1. Use `grep` or search to find all instances of `UploadFile` or similar dangerous sinks.
+2. Verify all routes sharing similar logic have the same protections.
