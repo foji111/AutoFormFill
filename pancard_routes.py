@@ -37,10 +37,25 @@ def extract_pancard_info_from_image(img: Image.Image):
         { "mime_type": "image/png", "data": image_bytes }
     ])
     text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Sentinel: Prevent info leak
+        print(f"JSON Decode Error: {text}")
+        raise HTTPException(status_code=500, detail="Error processing image data.")
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 @router.post("/extract-from-file", response_model=PANCardData)
 async def extract_pan_from_file(file: UploadFile = File(...)):
+    # Sentinel: Enforce file size limit to prevent DoS
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file.")
     try:

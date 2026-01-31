@@ -136,15 +136,27 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
             
         return parsed_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+        # Sentinel: Prevent information leakage by hiding raw exception details
+        print(f"Error processing image: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing the image.")
 
 
 # --- API Endpoints ---
 # IMPORTANT: Change decorators from @app.post to @router.post
 # and simplify the paths to be combined with the prefix in main.py
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
 @router.post("/extract-from-file", response_model=MarksheetData)
 async def extract_marksheet_from_file(file: UploadFile = File(...)):
+    # Sentinel: Enforce file size limit to prevent DoS
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
     try:
