@@ -4,3 +4,8 @@
 **Prevention:**
 1. Always enforce `MAX_FILE_SIZE` on uploads.
 2. Sanitize error messages in `HTTPException` to hide internal details.
+
+## 2026-01-31 - [Inconsistent Security Application]
+**Vulnerability:** DoS vulnerability and Info Leak persisted in `pancard` and `marksheet` routes despite being previously identified.
+**Learning:** Security fixes were not propagated to all similar endpoints. Partial fixes create a false sense of security.
+**Prevention:** When patching a vulnerability class (like File Upload DoS), audit all other instances of that pattern (e.g., search for all `UploadFile` usages) to ensure comprehensive coverage.
