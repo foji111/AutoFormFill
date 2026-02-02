@@ -4,3 +4,8 @@
 **Prevention:**
 1. Always enforce `MAX_FILE_SIZE` on uploads.
 2. Sanitize error messages in `HTTPException` to hide internal details.
+
+## 2025-10-27 - [Inconsistent Security Controls]
+**Vulnerability:** Security controls (DoS protection, error sanitization) were applied to one endpoint (`/aadhaar`) but missing in others (`/pan`), creating a false sense of security.
+**Learning:** Security features must be applied systematically across all similar endpoints rather than ad-hoc per route.
+**Prevention:** Use shared utility functions or middleware for common security checks (like file size validation) to ensure coverage.
