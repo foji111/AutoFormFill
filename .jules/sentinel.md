@@ -4,3 +4,8 @@
 **Prevention:**
 1. Always enforce `MAX_FILE_SIZE` on uploads.
 2. Sanitize error messages in `HTTPException` to hide internal details.
+
+## 2025-10-27 - [Inconsistent Security Controls]
+**Vulnerability:** While file size limits were documented, they were only implemented in `aadharcard_routes.py`, leaving `pancard_routes.py` and `marksheet_routes.py` vulnerable.
+**Learning:** Manual implementation of security controls in each controller leads to inconsistencies.
+**Prevention:** Verify security controls across *all* endpoints, not just the first one. Consider using shared dependencies for common security logic.
