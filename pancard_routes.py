@@ -11,6 +11,8 @@ router = APIRouter()
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
 class PANCardRequest(BaseModel):
     image_base64: str
 
@@ -41,6 +43,19 @@ def extract_pancard_info_from_image(img: Image.Image):
 
 @router.post("/extract-from-file", response_model=PANCardData)
 async def extract_pan_from_file(file: UploadFile = File(...)):
+    # Sentinel: Enforce file size limit to prevent DoS
+    try:
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+
+        if file_size > MAX_FILE_SIZE:
+             raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+    except Exception as e:
+         if isinstance(e, HTTPException):
+             raise e
+         raise HTTPException(status_code=400, detail="Error checking file size.")
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file.")
     try:
