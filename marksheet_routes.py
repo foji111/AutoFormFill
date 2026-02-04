@@ -4,6 +4,7 @@ import json
 import base64
 import binascii
 import io
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Body, File, UploadFile
@@ -15,9 +16,15 @@ import google.generativeai as genai
 # Use APIRouter instead of FastAPI
 router = APIRouter()
 
+# --- Logging Setup ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # --- Configuration (remains the same) ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 # --- Pydantic Models (remains the same) ---
@@ -136,7 +143,9 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
             
         return parsed_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+        logger.error(f"Error processing marksheet image: {e}")
+        # Sentinel: Sanitize error message to prevent info leakage
+        raise HTTPException(status_code=500, detail="An unexpected error occurred processing the image.")
 
 
 # --- API Endpoints ---
@@ -145,6 +154,17 @@ You are REQUIRED to attempt both methods before setting `"spi": null`.
 
 @router.post("/extract-from-file", response_model=MarksheetData)
 async def extract_marksheet_from_file(file: UploadFile = File(...)):
+    # Sentinel: Enforce file size limit to prevent DoS
+    try:
+        file.file.seek(0, 2)
+        if file.file.tell() > MAX_FILE_SIZE:
+             raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+        file.file.seek(0)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        pass
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
     try:
