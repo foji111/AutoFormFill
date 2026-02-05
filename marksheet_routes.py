@@ -19,6 +19,7 @@ router = APIRouter()
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 # --- Pydantic Models (remains the same) ---
 class SubjectResult(BaseModel):
@@ -148,7 +149,17 @@ async def extract_marksheet_from_file(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type.")
     try:
+        # Check file size without reading into memory first
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
         img = Image.open(io.BytesIO(await file.read()))
+    except HTTPException:
+        raise
     except IOError:
         raise HTTPException(status_code=400, detail="Invalid or corrupted image file.")
     
